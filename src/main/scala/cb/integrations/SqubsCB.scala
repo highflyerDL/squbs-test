@@ -1,5 +1,4 @@
-package com.skapadia.akka.streams
-
+package cb.integrations
 
 import java.util.UUID
 
