@@ -9,5 +9,6 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.12" % Test,
   "ch.qos.logback" % "logback-classic" % "1.2.3",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0",
+  "com.github.blemale" %% "scaffeine" % "2.5.0",
   "org.squbs" %% "squbs-ext" % "0.10.0"
 )

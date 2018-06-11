@@ -15,12 +15,10 @@ object AkkaCB {
 
   /**
     * A stream of 100 integers
-    * CB trips every 2 elements. Stream should wait until CB is closed then continue
+    * CB trips every X elements. Stream should wait until CB is closed then continue
     **/
   def main(args: Array[String]): Unit = {
     val CBresetTimeout = 5.seconds
-    val streamResetTimeout = 6.seconds
-//    val streamResetTimeout = CBresetTimeout
     implicit val system: ActorSystem = ActorSystem("streamapp")
     implicit val scheduler: Scheduler = system.scheduler
 
@@ -30,20 +28,20 @@ object AkkaCB {
         maxFailures = 3,
         callTimeout = 3.seconds,
         resetTimeout = CBresetTimeout)
-        .onOpen(println(s"CB opened! Will be reset after $CBresetTimeout"))
+        .onOpen(println(s"CB opened!"))
         .onHalfOpen(println("CB half-opened! Will test now with the next element"))
-//        .onCallSuccess(_ => println(s"CB success"))
-//        .onCallFailure(_ => println(s"CB failure"))
         .onClose(println("CB closed!"))
+
+    def getStreamTimeout = breaker.resetTimeout + 1.seconds
 
     val decider: Supervision.Decider = {
       case _: MerchantCenterException ⇒ println("MC down!"); Supervision.Resume
       case _: CircuitBreakerOpenException ⇒ {
         if (breaker.isOpen) {
-          println(s"CB tripped! Will resume stream after $streamResetTimeout")
-          Thread.sleep(streamResetTimeout.toMillis)
+          println(s"CB tripped! Will resume stream after $getStreamTimeout")
+          Thread.sleep(getStreamTimeout.toMillis)
         }
-        Supervision.Restart
+        Supervision.Resume
       }
       case err: Throwable ⇒ println(err); Supervision.Stop
     }
@@ -59,19 +57,10 @@ object AkkaCB {
       number
     }
 
-//    def defineFailure(result: Try[Int]): Boolean = {
-//      result.isSuccess
-//    }
-
-
     val source: Source[Int, NotUsed] = Source(1 to 100).map(a => {
       println(s"Init $a"); a
     })
-    val process = Flow[Int].mapAsync(2)(elem => breaker.withCircuitBreaker(callExternal(elem)))
-//    val processRestart = RestartFlow
-//      .withBackoff(10.seconds, 30.seconds, 0.2, 20) {() =>
-//      Flow[Int].mapAsync(1)(elem => breaker.withCircuitBreaker(callExternal(elem)))
-//    }
+    val process = Flow[Int].mapAsync(3)(elem => breaker.withCircuitBreaker(callExternal(elem)))
 
     source
       .via(process)
